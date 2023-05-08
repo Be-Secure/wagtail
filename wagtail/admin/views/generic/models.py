@@ -83,8 +83,10 @@ class IndexView(
     page_kwarg = "p"
     default_ordering = None
     search_fields = None
+    search_backend_name = "default"
     is_searchable = None
     search_kwarg = "q"
+    use_autocomplete = False
     filters = None
     filterset_class = None
     table_class = Table
@@ -178,12 +180,7 @@ class IndexView(
         )
         return queryset.annotate(_updated_at=models.Subquery(latest_log))
 
-    def get_queryset(self):
-        # Instead of calling super().get_queryset(), we copy the initial logic
-        # from Django's MultipleObjectMixin, because we need to annotate the
-        # updated_at before using it for ordering.
-        # https://github.com/django/django/blob/stable/4.1.x/django/views/generic/list.py#L22-L47
-
+    def get_base_queryset(self):
         if self.queryset is not None:
             queryset = self.queryset
             if isinstance(queryset, models.QuerySet):
@@ -196,6 +193,15 @@ class IndexView(
                 "%(cls)s.model, %(cls)s.queryset, or override "
                 "%(cls)s.get_queryset()." % {"cls": self.__class__.__name__}
             )
+        return queryset
+
+    def get_queryset(self):
+        # Instead of calling super().get_queryset(), we copy the initial logic
+        # from Django's MultipleObjectMixin into get_base_queryset(), because
+        # we need to annotate the updated_at before using it for ordering.
+        # https://github.com/django/django/blob/stable/4.1.x/django/views/generic/list.py#L22-L47
+
+        queryset = self.get_base_queryset()
 
         self.filters, queryset = self.filter_queryset(queryset)
 
@@ -254,8 +260,12 @@ class IndexView(
         if not self.search_query:
             return queryset
 
-        if class_is_indexed(queryset.model):
-            search_backend = get_search_backend()
+        if class_is_indexed(queryset.model) and self.search_backend_name:
+            search_backend = get_search_backend(self.search_backend_name)
+            if self.use_autocomplete:
+                return search_backend.autocomplete(
+                    self.search_query, queryset, fields=self.search_fields
+                )
             return search_backend.search(
                 self.search_query, queryset, fields=self.search_fields
             )
@@ -680,7 +690,7 @@ class DeleteView(
     def get_usage(self):
         if not self.usage_url:
             return None
-        return ReferenceIndex.get_references_to(self.object).group_by_source_object()
+        return ReferenceIndex.get_grouped_references_to(self.object)
 
     def get_success_url(self):
         next_url = get_valid_next_url_from_request(self.request)
@@ -751,6 +761,7 @@ class DeleteView(
 
 
 class RevisionsCompareView(WagtailAdminTemplateMixin, TemplateView):
+    edit_handler = None
     edit_url_name = None
     history_url_name = None
     edit_label = gettext_lazy("Edit")
@@ -769,6 +780,8 @@ class RevisionsCompareView(WagtailAdminTemplateMixin, TemplateView):
         return get_object_or_404(self.model, pk=unquote(self.pk))
 
     def get_edit_handler(self):
+        if self.edit_handler:
+            return self.edit_handler
         return get_edit_handler(self.model)
 
     def get_page_subtitle(self):
@@ -874,7 +887,7 @@ class UnpublishView(HookResponseMixin, WagtailAdminTemplateMixin, TemplateView):
         return get_object_or_404(self.model, pk=unquote(self.pk))
 
     def get_usage(self):
-        return ReferenceIndex.get_references_to(self.object).group_by_source_object()
+        return ReferenceIndex.get_grouped_references_to(self.object)
 
     def get_objects_to_unpublish(self):
         # Hook to allow child classes to have more objects to unpublish (e.g. page descendants)

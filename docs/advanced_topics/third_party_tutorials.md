@@ -6,12 +6,13 @@ from third-party developers. Some of the older links may not apply to
 the latest Wagtail versions.
 ```
 
+-   [Build a Website Without Any Coding with Traleor (& Wagtail) in Just 10 Minutes (video)](https://www.youtube.com/watch?v=IQY0dzo2Wzg) (19 March 2023)
+-   [Getting Started with Wagtail: A Beginner’s Installation Guide (Windows)](https://medium.com/@dencomac/getting-started-with-wagtail-a-beginners-installation-guide-a5671da1eccc) (9 March 2023)
 -   [Introduction to Stimulus in Wagtail for contributors (video)](https://youtu.be/5WS7B8R0x0U) (28 February 2023)
 -   [How to pick a good Wagtail package](https://wagtail.org/blog/pick-out-packages/) (1 February 2023)
 -   [Dockerized Wagtail 4 + NuxtJS 3 + Graphene 3 + Vuetify 3 (with template)](https://dev.to/ordigital/dockerized-wagtail-4-nuxtjs-3-graphene-3-vuetify-3-1n8m) (26 January 2023)
 -   [Wagtail: Extending the Draftail Editor Part 4 - Custom Lists](https://enzedonline.com/en/tech-blog/wagtail-extending-the-draftail-editor-part-4-custom-lists/) (29 December 2022)
 -   [Making Wagtail pages more SEO friendly with Wagtail Metadata](https://enzedonline.com/en/tech-blog/making-wagtail-pages-more-seo-friendly-with-wagtail-metadata/) (24 December 2022)
--   [10 (recommended) Wagtail Best Practices](https://climbtheladder.com/10-wagtail-best-practices/) (23 December 2022)
 -   [Configuring a Dynamic Sitemap on Wagtail](https://enzedonline.com/en/tech-blog/configuring-a-dynamic-sitemap-on-wagtail/) (22 December 2022)
 -   [Deploying Wagtail to Google's Cloud Run](https://codelabs.developers.google.com/codelabs/cloud-run-wagtail) (7 December 2022)
 -   [Tutorial: Build a Wagtail blog in 20 minutes](https://codewithstein.com/django-wagtail-cms-building-a-blog-in-20-minutes/) (5 December 2022)

@@ -57,6 +57,7 @@ from wagtail.models import (
 )
 from wagtail.telepath import JSContext
 from wagtail.users.utils import get_gravatar_url
+from wagtail.utils.deprecation import RemovedInWagtail60Warning
 
 register = template.Library()
 
@@ -201,7 +202,7 @@ def admin_url_name(obj, action):
     """
     if isinstance(obj, Page):
         return f"wagtailadmin_pages:{action}"
-    return obj.get_admin_url_namespace() + f":{action}"
+    return obj.snippet_viewset.get_url_name(action)
 
 
 @register.simple_tag
@@ -577,7 +578,7 @@ def page_header_buttons(context, page, page_perms):
             "w-p-0",
             "w-w-12",
             "w-h-full",
-            "w-text-primary",
+            "w-text-text-label",
             "w-bg-transparent",
             "hover:w-scale-110",
             "w-transition",
@@ -719,6 +720,19 @@ def avatar_url(user, size=50, gravatar_only=False):
     return versioned_static_func("wagtailadmin/images/default-user-avatar.png")
 
 
+@register.simple_tag(takes_context=True)
+def admin_theme_name(context):
+    """
+    Retrieves the theme name for the current user.
+    """
+    user = context["request"].user
+    return (
+        user.wagtail_userprofile.theme
+        if hasattr(user, "wagtail_userprofile")
+        else "system"
+    )
+
+
 @register.simple_tag
 def js_translation_strings():
     return mark_safe(json.dumps(get_js_translation_strings()))
@@ -761,12 +775,51 @@ def icon(name=None, classname=None, title=None, wrapped=False, class_name=None):
         raise ValueError("You must supply an icon name")
 
     if class_name:
-        from wagtail.utils.deprecation import RemovedInWagtail60Warning
-
         warn(
             (
                 "Icon template tag `class_name` has been renamed to `classname`, please adopt the new usage instead. "
                 f'Replace `{{% icon ... class_name="{class_name}" %}}` with `{{% icon ... classname="{class_name}" %}}`'
+            ),
+            category=RemovedInWagtail60Warning,
+        )
+
+    deprecated_icons = [
+        "angle-double-left",
+        "angle-double-right",
+        "arrow-down-big",
+        "arrow-up-big",
+        "arrows-up-down",
+        "chain-broken",
+        "dots-vertical",
+        "ellipsis-v",
+        "horizontalrule",
+        "repeat",
+        "reset",
+        "undo",
+        "wagtail-inverse",
+    ]
+
+    if name in deprecated_icons:
+        warn(
+            (f"Icon `{name}` is deprecated and will be removed in a future release."),
+            category=RemovedInWagtail60Warning,
+        )
+
+    renamed_icons = {
+        "chevron-down": "arrow-down",
+        "download-alt": "download",
+        "duplicate": "copy",
+        "tick": "check",
+        "uni52": "folder-inverse",
+    }
+
+    if name in renamed_icons:
+        old_name = name
+        name = renamed_icons[name]
+        warn(
+            (
+                f"Icon `{old_name}` has been renamed to `{name}`, please adopt the new usage instead. "
+                f'Replace `{{% icon name="{old_name}" ... %}}` with `{{% icon name="{name}" ... %}}`'
             ),
             category=RemovedInWagtail60Warning,
         )

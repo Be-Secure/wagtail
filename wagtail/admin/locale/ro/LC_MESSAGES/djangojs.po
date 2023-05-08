@@ -3,12 +3,12 @@
 # Bogdan Mateescu, 2022
 # Julian C <jcuotpc@gmail.com>, 2022
 # Loic Teixeira, 2022
-# Dan Braghis, 2022
+# Dan Braghis, 2023
 #
 msgid ""
 msgstr ""
-"Last-Translator: Dan Braghis, 2022\n"
-"Language-Team: Romanian (https://www.transifex.com/torchbox/teams/8009/ro/)\n"
+"Last-Translator: Dan Braghis, 2023\n"
+"Language-Team: Romanian (https://app.transifex.com/torchbox/teams/8009/ro/)\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ro\n"
 "Plural-Forms: nplurals=3; plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?"
@@ -28,6 +28,9 @@ msgstr "Text alternativ"
 
 msgid "Are you sure?"
 msgstr "Ești sigur?"
+
+msgid "Blocks"
+msgstr "Blocuri"
 
 msgid "Broken link"
 msgstr "Link nefuncțional"

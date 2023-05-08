@@ -444,7 +444,7 @@ def page_header_buttons(page, page_perms, next_url=None):
         yield Button(
             _("Unpublish"),
             url,
-            icon_name="download-alt",
+            icon_name="download",
             attrs={
                 "title": _("Unpublish page '%(title)s'")
                 % {"title": page.get_admin_display_title()}
@@ -1025,12 +1025,10 @@ def register_icons(icons):
     for icon in [
         "angle-double-left.svg",
         "angle-double-right.svg",
-        "arrow-down-big.svg",
         "arrow-down.svg",
         "arrow-right-full.svg",
         "arrow-left.svg",
         "arrow-right.svg",
-        "arrow-up-big.svg",
         "arrow-up.svg",
         "arrows-up-down.svg",
         "bars.svg",
@@ -1042,7 +1040,6 @@ def register_icons(icons):
         "calendar-check.svg",
         "chain-broken.svg",
         "check.svg",
-        "chevron-down.svg",
         "circle-check.svg",
         "circle-plus.svg",
         "circle-xmark.svg",
@@ -1060,6 +1057,7 @@ def register_icons(icons):
         "crosshairs.svg",
         "cut.svg",
         "date.svg",
+        "decimal.svg",
         "desktop.svg",
         "doc-empty-inverse.svg",
         "doc-empty.svg",
@@ -1067,10 +1065,8 @@ def register_icons(icons):
         "doc-full.svg",  # aka file-text-alt
         "dots-vertical.svg",
         "dots-horizontal.svg",
-        "download-alt.svg",
         "download.svg",
         "draft.svg",
-        "duplicate.svg",
         "edit.svg",
         "ellipsis-v.svg",
         "expand-right.svg",
@@ -1123,6 +1119,7 @@ def register_icons(icons):
         "radio-empty.svg",
         "radio-full.svg",
         "redirect.svg",
+        "regex.svg",
         "repeat.svg",
         "reset.svg",
         "resubmit.svg",
@@ -1142,11 +1139,9 @@ def register_icons(icons):
         "thumbtack.svg",
         "thumbtack-crossed.svg",
         "tick-inverse.svg",
-        "tick.svg",
         "time.svg",
         "title.svg",
         "undo.svg",
-        "uni52.svg",  # Is this a redundant icon?
         "upload.svg",
         "user.svg",
         "view.svg",

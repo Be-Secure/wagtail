@@ -9,7 +9,7 @@
 # Ed <724195301@qq.com>, 2018
 # Favo Yang <favoyang@gmail.com>, 2021
 # First Last <abc+github@mynook.info>, 2019
-# Ford Guo <agile.guo@gmail.com>, 2020
+# Ford Guo <agile.guo@gmail.com>, 2020,2023
 # Fred Zeng <979738295@qq.com>, 2016
 # 祝沙军 <zhushajun@gmail.com>, 2017
 # Vincent Zhao <zhaopu2008@gmail.com>, 2017
@@ -21,16 +21,19 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-20 13:09+0000\n"
+"POT-Creation-Date: 2023-04-20 11:47+0100\n"
 "PO-Revision-Date: 2014-02-21 15:51+0000\n"
-"Last-Translator: 祝沙军 <zhushajun@gmail.com>, 2017\n"
-"Language-Team: Chinese (China) (http://www.transifex.com/torchbox/wagtail/"
+"Last-Translator: Ford Guo <agile.guo@gmail.com>, 2020,2023\n"
+"Language-Team: Chinese (China) (http://app.transifex.com/torchbox/wagtail/"
 "language/zh_CN/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: zh_CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Wagtail API v2"
+msgstr "Wagtail API v2"
 
 msgid "Wagtail core"
 msgstr "Wagtail 核心组件"
@@ -71,6 +74,12 @@ msgstr "这个区块没有选项"
 msgid "This field is required."
 msgstr "这个字段是必需的。"
 
+msgid "Wagtail frontend cache"
+msgstr "Wagtail 前端缓存"
+
+msgid "Wagtail routablepage"
+msgstr "Wagtail 路由页面"
+
 msgid "Password"
 msgstr "密码"
 
@@ -80,19 +89,14 @@ msgstr "密码错误，请重新输入"
 msgid "Comment"
 msgstr "评论"
 
-#, python-brace-format
-msgid "<b>Page '{page_title}' is locked</b> by <b>you</b>."
-msgstr "<b>页面 '{page_title}'</b> 已被<b>你</b>锁定。"
+msgid "Locked"
+msgstr "已锁定"
 
-#, python-brace-format
-msgid "<b>Page '{page_title}' is locked</b>."
-msgstr "<b>页面 '{page_title}' 已被锁定</b>。"
+msgid "Unlocked"
+msgstr "已解锁"
 
-msgid "This page is currently awaiting moderation."
-msgstr "此页面当前在等待审核。"
-
-msgid "Only reviewers for this task can edit the page."
-msgstr "只有此任务的审阅者才能编辑页面。"
+msgid "latest revision"
+msgstr "最新版本"
 
 msgid "live"
 msgstr "在用"
@@ -203,6 +207,9 @@ msgstr "页面"
 msgid "pages"
 msgstr "页面"
 
+msgid "object id"
+msgstr "对象ID"
+
 msgid "submitted for moderation"
 msgstr "已提交审核"
 
@@ -217,6 +224,12 @@ msgstr "内容JSON"
 
 msgid "approved go live at"
 msgstr "批准上线时间"
+
+msgid "revision"
+msgstr "修订版本"
+
+msgid "revisions"
+msgstr "修订版本"
 
 msgid "Add/edit pages you own"
 msgstr "添加/编辑所属的页面"
@@ -576,12 +589,6 @@ msgstr "取消发布已计划的草稿"
 
 msgid "Unpublished scheduled draft"
 msgstr "已取消发布已计划的草稿"
-
-msgid "Locked"
-msgstr "已锁定"
-
-msgid "Unlocked"
-msgstr "已解锁"
 
 msgid "Reject"
 msgstr "拒绝"

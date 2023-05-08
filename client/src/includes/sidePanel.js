@@ -43,14 +43,7 @@ export default function initSidePanel() {
     if (panelName && !selectedPanel) return;
 
     // Open / close side panel
-
-    // HACK: For now, the comments will show without the side-panel opening.
-    // They will later be updated so that they render inside the side panel.
-    // We couldn't implement this for Wagtail 3.0 as the existing field styling
-    // renders the "Add comment" button on the right hand side, and this gets
-    // covered up by the side panel.
-
-    if (panelName === '' || panelName === 'comments') {
+    if (panelName === '') {
       sidePanelWrapper.classList.remove('form-side--open');
       sidePanelWrapper.removeAttribute('aria-labelledby');
     } else {
@@ -129,6 +122,14 @@ export default function initSidePanel() {
     }
   };
 
+  // Open the side panel if the 'open' custom event is triggered on the side panel
+  // This is allows panels to be opened with JavaScript without hacking the toggle
+  document.querySelectorAll('[data-side-panel]').forEach((panel) => {
+    panel.addEventListener('open', () => {
+      setPanel(panel.dataset.sidePanel);
+    });
+  });
+
   document.querySelectorAll('[data-side-panel-toggle]').forEach((toggle) => {
     toggle.addEventListener('click', () => {
       togglePanel(toggle.dataset.sidePanelToggle);
@@ -154,7 +155,10 @@ export default function initSidePanel() {
       newWidth,
     ).replace('%(num)s', newWidth);
 
-    sidePanelWrapper.style.width = `${newWidth}px`;
+    sidePanelWrapper.parentElement.style.setProperty(
+      '--side-panel-width',
+      `${newWidth}px`,
+    );
     const inputPercentage = ((newWidth - minWidth) / range) * 100;
     widthInput.value = getDirectedPercentage(inputPercentage);
     widthInput.setAttribute('aria-valuetext', valueText);
@@ -178,6 +182,13 @@ export default function initSidePanel() {
     setSidePanelWidth(startWidth + delta * direction);
   };
 
+  const onPointerUp = (e) => {
+    resizeGrip.releasePointerCapture(e.pointerId);
+    resizeGrip.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    document.body.classList.remove('side-panel-resizing');
+  };
+
   resizeGrip.addEventListener('pointerdown', (e) => {
     // Ignore right-click, because it opens the context menu and doesn't trigger
     // pointerup when the click is released.
@@ -192,12 +203,11 @@ export default function initSidePanel() {
     document.body.classList.add('side-panel-resizing');
     resizeGrip.setPointerCapture(e.pointerId);
     resizeGrip.addEventListener('pointermove', onPointerMove);
-  });
 
-  resizeGrip.addEventListener('pointerup', (e) => {
-    resizeGrip.removeEventListener('pointermove', onPointerMove);
-    resizeGrip.releasePointerCapture(e.pointerId);
-    document.body.classList.remove('side-panel-resizing');
+    // The pointerup event might not be dispatched on the resizeGrip itself
+    // (e.g. when the pointer is above/below the grip, or beyond the side panel's
+    // minimum/maximum width), so listen for it on the document instead.
+    document.addEventListener('pointerup', onPointerUp);
   });
 
   // Handle resizing with keyboard using a hidden range input.

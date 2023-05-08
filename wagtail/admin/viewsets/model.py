@@ -87,8 +87,8 @@ class ModelViewSet(ViewSet):
         """
         Returns the form class to use for the create / edit forms.
         """
-        fields = getattr(self, "form_fields", None)
-        exclude = getattr(self, "exclude_form_fields", None)
+        fields = self.get_form_fields()
+        exclude = self.get_exclude_form_fields()
 
         if fields is None and exclude is None:
             raise ImproperlyConfigured(
@@ -103,6 +103,32 @@ class ModelViewSet(ViewSet):
             exclude=exclude,
         )
 
+    def get_form_fields(self):
+        """
+        Returns a list or tuple of field names to be included in the create / edit forms.
+        """
+        return getattr(self, "form_fields", None)
+
+    def get_exclude_form_fields(self):
+        """
+        Returns a list or tuple of field names to be excluded from the create / edit forms.
+        """
+        return getattr(self, "exclude_form_fields", None)
+
+    @property
+    def url_finder_class(self):
+        return type(
+            "_ModelAdminURLFinder",
+            (ModelAdminURLFinder,),
+            {
+                "permission_policy": self.permission_policy,
+                "edit_url_name": self.get_url_name("edit"),
+            },
+        )
+
+    def register_admin_url_finder(self):
+        register_admin_url_finder(self.model, self.url_finder_class)
+
     def get_urlpatterns(self):
         return super().get_urlpatterns() + [
             path("", self.index_view, name="index"),
@@ -113,12 +139,4 @@ class ModelViewSet(ViewSet):
 
     def on_register(self):
         super().on_register()
-        url_finder_class = type(
-            "_ModelAdminURLFinder",
-            (ModelAdminURLFinder,),
-            {
-                "permission_policy": self.permission_policy,
-                "edit_url_name": self.get_url_name("edit"),
-            },
-        )
-        register_admin_url_finder(self.model, url_finder_class)
+        self.register_admin_url_finder()

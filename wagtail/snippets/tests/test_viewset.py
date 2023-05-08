@@ -1,40 +1,68 @@
+from unittest import mock
+
 from django.contrib.admin.utils import quote
+from django.contrib.auth import get_permission_codename
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils.timezone import now
 
 from wagtail.admin.admin_url_finder import AdminURLFinder
+from wagtail.admin.menu import admin_menu, settings_menu
 from wagtail.admin.panels import get_edit_handler
 from wagtail.admin.staticfiles import versioned_static
 from wagtail.blocks.field_block import FieldBlockAdapter
 from wagtail.coreutils import get_dummy_request
 from wagtail.models import Locale, Workflow, WorkflowContentType
 from wagtail.snippets.blocks import SnippetChooserBlock
+from wagtail.snippets.models import register_snippet
+from wagtail.snippets.views.snippets import SnippetViewSet
 from wagtail.snippets.widgets import AdminSnippetChooser
 from wagtail.test.testapp.models import (
     Advert,
     DraftStateModel,
     FullFeaturedSnippet,
     ModeratedModel,
+    RevisableChildModel,
+    RevisableModel,
     SnippetChooserModel,
 )
 from wagtail.test.utils import WagtailTestUtils
 
 
-class TestCustomIcon(WagtailTestUtils, TestCase):
+class TestIncorrectRegistration(TestCase):
+    def test_no_model_set_or_passed(self):
+        # The base SnippetViewSet class has no `model` attribute set,
+        # so using it directly should raise an error
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            "SnippetViewSet must be passed a model or define a model attribute.",
+        ):
+            register_snippet(SnippetViewSet)
+
+
+class BaseSnippetViewSetTests(WagtailTestUtils, TestCase):
+    model = None
+
     def setUp(self):
         self.user = self.login()
-        self.object = FullFeaturedSnippet.objects.create(
-            text="test snippet with custom icon"
-        )
+
+    def get_url(self, url_name, args=()):
+        return reverse(self.model.snippet_viewset.get_url_name(url_name), args=args)
+
+
+class TestCustomIcon(BaseSnippetViewSetTests):
+    model = FullFeaturedSnippet
+
+    def setUp(self):
+        super().setUp()
+        self.object = self.model.objects.create(text="test snippet with custom icon")
         self.revision_1 = self.object.save_revision()
         self.revision_1.publish()
         self.object.text = "test snippet with custom icon (updated)"
         self.revision_2 = self.object.save_revision()
-
-    def get_url(self, url_name, args=()):
-        return reverse(self.object.snippet_viewset.get_url_name(url_name), args=args)
 
     def test_get_views(self):
         pk = quote(self.object.pk)
@@ -116,9 +144,9 @@ class TestSnippetChooserBlockWithIcon(TestCase):
         self.assertEqual(kwargs, {"required": False})
 
 
-class TestSnippetChooserPanelWithIcon(WagtailTestUtils, TestCase):
+class TestSnippetChooserPanelWithIcon(BaseSnippetViewSetTests):
     def setUp(self):
-        self.user = self.login()
+        super().setUp()
         self.request = get_dummy_request()
         self.request.user = self.user
         self.text = "Test full-featured snippet with icon text"
@@ -185,21 +213,13 @@ class TestSnippetChooserPanelWithIcon(WagtailTestUtils, TestCase):
                 self.assertNotIn("snippet", response.context[key])
 
 
-class TestAdminURLs(WagtailTestUtils, TestCase):
-    def setUp(self):
-        self.user = self.login()
-
+class TestAdminURLs(BaseSnippetViewSetTests):
     def test_default_url_namespace(self):
         snippet = Advert.objects.create(text="foo")
         viewset = snippet.snippet_viewset
         # Accessed via the viewset
         self.assertEqual(
             viewset.get_admin_url_namespace(),
-            "wagtailsnippets_tests_advert",
-        )
-        # Accessed via the model
-        self.assertEqual(
-            snippet.get_admin_url_namespace(),
             "wagtailsnippets_tests_advert",
         )
         # Get specific URL name
@@ -227,8 +247,6 @@ class TestAdminURLs(WagtailTestUtils, TestCase):
 
         # Accessed via the viewset
         self.assertEqual(viewset.get_admin_base_path(), "snippets/tests/advert")
-        # Accessed via the model
-        self.assertEqual(snippet.get_admin_base_path(), "snippets/tests/advert")
         # Get specific URL
         self.assertEqual(reverse(viewset.get_url_name("edit"), args=[pk]), expected_url)
         # Ensure AdminURLFinder returns the correct URL
@@ -250,8 +268,6 @@ class TestAdminURLs(WagtailTestUtils, TestCase):
         viewset = snippet.snippet_viewset
         # Accessed via the viewset
         self.assertEqual(viewset.get_admin_url_namespace(), "some_namespace")
-        # Accessed via the model
-        self.assertEqual(snippet.get_admin_url_namespace(), "some_namespace")
         # Get specific URL name
         self.assertEqual(viewset.get_url_name("edit"), "some_namespace:edit")
         # Chooser namespace
@@ -273,8 +289,6 @@ class TestAdminURLs(WagtailTestUtils, TestCase):
         expected_choose_url = "/admin/choose/wisely/"
         # Accessed via the viewset
         self.assertEqual(viewset.get_admin_base_path(), "deep/within/the/admin")
-        # Accessed via the model
-        self.assertEqual(snippet.get_admin_base_path(), "deep/within/the/admin")
         # Get specific URL
         self.assertEqual(reverse(viewset.get_url_name("edit"), args=[pk]), expected_url)
         # Ensure AdminURLFinder returns the correct URL
@@ -292,10 +306,7 @@ class TestAdminURLs(WagtailTestUtils, TestCase):
         )
 
 
-class TestPagination(WagtailTestUtils, TestCase):
-    def setUp(self):
-        self.user = self.login()
-
+class TestPagination(BaseSnippetViewSetTests):
     @classmethod
     def setUpTestData(cls):
         default_locale = Locale.get_default()
@@ -352,14 +363,8 @@ class TestPagination(WagtailTestUtils, TestCase):
         self.assertContains(response, choose_results_url + "?p=2")
 
 
-class TestFilterSetClass(WagtailTestUtils, TestCase):
-    def setUp(self):
-        self.login()
-
-    def get_url(self, url_name, args=()):
-        return reverse(
-            FullFeaturedSnippet.snippet_viewset.get_url_name(url_name), args=args
-        )
+class TestFilterSetClass(BaseSnippetViewSetTests):
+    model = FullFeaturedSnippet
 
     def get(self, params={}):
         return self.client.get(self.get_url("list"), params)
@@ -494,16 +499,13 @@ class TestFilterSetClassSearch(WagtailTestUtils, TransactionTestCase):
         )
 
 
-class TestListFilterWithList(WagtailTestUtils, TestCase):
+class TestListFilterWithList(BaseSnippetViewSetTests):
     model = DraftStateModel
 
     def setUp(self):
-        self.login()
+        super().setUp()
         self.date = now()
         self.date_str = self.date.isoformat()
-
-    def get_url(self, url_name, args=()):
-        return reverse(self.model.snippet_viewset.get_url_name(url_name), args=args)
 
     def get(self, params={}):
         return self.client.get(self.get_url("list"), params)
@@ -636,19 +638,13 @@ class TestListFilterWithDict(TestListFilterWithList):
         )
 
 
-class TestListViewWithCustomColumns(WagtailTestUtils, TestCase):
-    def setUp(self):
-        self.login()
+class TestListViewWithCustomColumns(BaseSnippetViewSetTests):
+    model = FullFeaturedSnippet
 
     @classmethod
     def setUpTestData(cls):
-        FullFeaturedSnippet.objects.create(text="From Indonesia", country_code="ID")
-        FullFeaturedSnippet.objects.create(text="From the UK", country_code="UK")
-
-    def get_url(self, url_name, args=()):
-        return reverse(
-            FullFeaturedSnippet.snippet_viewset.get_url_name(url_name), args=args
-        )
+        cls.model.objects.create(text="From Indonesia", country_code="ID")
+        cls.model.objects.create(text="From the UK", country_code="UK")
 
     def get(self, params={}):
         return self.client.get(self.get_url("list"), params)
@@ -672,3 +668,294 @@ class TestListViewWithCustomColumns(WagtailTestUtils, TestCase):
 
         # The bulk actions column plus 4 columns defined in FullFeaturedSnippetViewSet
         self.assertTagInHTML("<th>", html, count=5, allow_extra_attrs=True)
+
+
+class TestCustomTemplates(BaseSnippetViewSetTests):
+    model = FullFeaturedSnippet
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.object = cls.model.objects.create(text="Some snippet")
+
+    def test_template_lookups(self):
+        pk = quote(self.object.pk)
+        cases = {
+            "with app label and model name": (
+                "add",
+                [],
+                "wagtailsnippets/snippets/tests/fullfeaturedsnippet/create.html",
+            ),
+            "with app label": (
+                "edit",
+                [pk],
+                "wagtailsnippets/snippets/tests/edit.html",
+            ),
+            "without app label and model name": (
+                "delete",
+                [pk],
+                "wagtailsnippets/snippets/delete.html",
+            ),
+            "override a view that uses a generic template": (
+                "unpublish",
+                [pk],
+                "wagtailsnippets/snippets/tests/fullfeaturedsnippet/unpublish.html",
+            ),
+            "override with index_template_name": (
+                "list",
+                [],
+                "tests/fullfeaturedsnippet_index.html",
+            ),
+            "override index results template with namespaced template": (
+                # This is technically the same as the first case, but this ensures that
+                # the index results view can be overridden separately from the index view
+                "list_results",
+                [],
+                "wagtailsnippets/snippets/tests/fullfeaturedsnippet/index_results.html",
+            ),
+            "override with get_history_template": (
+                "history",
+                [pk],
+                "tests/snippet_history.html",
+            ),
+        }
+        for case, (view_name, args, template_name) in cases.items():
+            with self.subTest(case=case):
+                response = self.client.get(self.get_url(view_name, args=args))
+                self.assertTemplateUsed(response, template_name)
+                self.assertContains(response, "<p>An added paragraph</p>", html=True)
+
+
+class TestCustomQuerySet(BaseSnippetViewSetTests):
+    model = FullFeaturedSnippet
+
+    @classmethod
+    def setUpTestData(cls):
+        default_locale = Locale.get_default()
+        objects = [
+            cls.model(text="FooSnippet", country_code="ID", locale=default_locale),
+            cls.model(text="BarSnippet", country_code="UK", locale=default_locale),
+            cls.model(text="[HIDDEN]Snippet", country_code="ID", locale=default_locale),
+        ]
+        cls.model.objects.bulk_create(objects)
+
+    def test_index_view(self):
+        response = self.client.get(self.get_url("list"), {"country_code": "ID"})
+        self.assertContains(response, "FooSnippet")
+        self.assertNotContains(response, "BarSnippet")
+        self.assertNotContains(response, "[HIDDEN]Snippet")
+
+
+class TestCustomOrdering(BaseSnippetViewSetTests):
+    model = FullFeaturedSnippet
+
+    @classmethod
+    def setUpTestData(cls):
+        default_locale = Locale.get_default()
+        objects = [
+            cls.model(text="CCCCCCCCCC", locale=default_locale),
+            cls.model(text="AAAAAAAAAA", locale=default_locale),
+            cls.model(text="DDDDDDDDDD", locale=default_locale),
+            cls.model(text="BBBBBBBBBB", locale=default_locale),
+        ]
+        cls.model.objects.bulk_create(objects)
+
+    def test_index_view_order(self):
+        response = self.client.get(self.get_url("list"))
+        # Should sort by text in descending order as specified in SnippetViewSet.ordering
+        # (not the default ordering of the model)
+        self.assertFalse(self.model._meta.ordering)
+        self.assertEqual(
+            [obj.text for obj in response.context["page_obj"]],
+            [
+                "AAAAAAAAAA",
+                "BBBBBBBBBB",
+                "CCCCCCCCCC",
+                "DDDDDDDDDD",
+            ],
+        )
+
+
+class TestDjangoORMSearchBackend(BaseSnippetViewSetTests):
+    model = DraftStateModel
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.first = cls.model.objects.create(
+            text="Wagtail is a Django-based CMS",
+        )
+        cls.second = cls.model.objects.create(
+            text="Django is a Python-based web framework",
+        )
+        cls.third = cls.model.objects.create(
+            text="Python is a programming-bas, uh, language",
+        )
+
+    def get(self, params={}, url_name="list"):
+        return self.client.get(self.get_url(url_name), params)
+
+    def test_simple(self):
+        response = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailsnippets/snippets/index.html")
+
+        # All objects should be in items
+        self.assertCountEqual(
+            list(response.context["page_obj"].object_list),
+            [self.first, self.second, self.third],
+        )
+
+        # The search box should not raise an error
+        self.assertNotContains(response, "This field is required.")
+
+    def test_empty_q(self):
+        response = self.get({"q": ""})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "wagtailsnippets/snippets/index.html")
+
+        # All objects should be in items
+        self.assertCountEqual(
+            list(response.context["page_obj"].object_list),
+            [self.first, self.second, self.third],
+        )
+
+        # The search box should not raise an error
+        self.assertNotContains(response, "This field is required.")
+
+    def test_is_searchable(self):
+        self.assertTrue(self.get().context["is_searchable"])
+
+    def test_search_index_view(self):
+        response = self.get({"q": "Django"})
+
+        # Only objects with "Django" should be in items
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            list(response.context["page_obj"].object_list),
+            [self.first, self.second],
+        )
+
+    def test_search_index_results_view(self):
+        response = self.get({"q": "Python"}, url_name="list_results")
+
+        # Only objects with "Python" should be in items
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            list(response.context["object_list"]),
+            [self.second, self.third],
+        )
+
+
+class TestMenuItemRegistration(BaseSnippetViewSetTests):
+    def setUp(self):
+        super().setUp()
+        self.request = get_dummy_request()
+        self.request.user = self.user
+
+    def test_add_to_admin_menu(self):
+        self.model = FullFeaturedSnippet
+        menu_items = admin_menu.render_component(self.request)
+        item = menu_items[-1]
+        self.assertEqual(item.name, "fullfeatured")
+        self.assertEqual(item.label, "Full-Featured MenuItem")
+        self.assertEqual(item.icon_name, "cog")
+        self.assertEqual(item.url, self.get_url("list"))
+
+    def test_add_to_settings_menu(self):
+        self.model = DraftStateModel
+        menu_items = settings_menu.render_component(self.request)
+        item = menu_items[0]
+        self.assertEqual(item.name, "publishables")
+        self.assertEqual(item.label, "Publishables")
+        self.assertEqual(item.icon_name, "snippet")
+        self.assertEqual(item.url, self.get_url("list"))
+
+    def test_group_registration(self):
+        menu_items = admin_menu.render_component(self.request)
+        revisables = [item for item in menu_items if item.name == "revisables"]
+        self.assertEqual(len(revisables), 1)
+
+        group_item = revisables[0]
+        self.assertEqual(group_item.label, "Revisables")
+        self.assertEqual(group_item.icon_name, "tasks")
+        self.assertEqual(len(group_item.menu_items), 2)
+
+        self.model = RevisableModel
+        revisable_item = group_item.menu_items[0]
+        self.assertEqual(revisable_item.name, "revisable-models")
+        self.assertEqual(revisable_item.label, "Revisable Models")
+        self.assertEqual(revisable_item.icon_name, "snippet")
+        self.assertEqual(revisable_item.url, self.get_url("list"))
+
+        self.model = RevisableChildModel
+        revisable_child_item = group_item.menu_items[1]
+        self.assertEqual(revisable_child_item.name, "revisable-child-models")
+        self.assertEqual(revisable_child_item.label, "Revisable Child Models")
+        self.assertEqual(revisable_child_item.icon_name, "snippet")
+        self.assertEqual(revisable_child_item.url, self.get_url("list"))
+
+    def test_limited_permissions(self):
+        self.user.is_superuser = False
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="wagtailadmin", codename="access_admin"
+            )
+        )
+        self.user.save()
+
+        menu_items = admin_menu.render_component(self.request)
+
+        # The menu items should not be present
+        item = [
+            item
+            for item in menu_items
+            if item.name in {"fullfeatured", "revisables", "publishables"}
+        ]
+        self.assertEqual(len(item), 0)
+
+    def test_basic_permissions(self):
+        self.model = DraftStateModel
+        self.user.is_superuser = False
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="wagtailadmin", codename="access_admin"
+            )
+        )
+        self.user.save()
+
+        for action in ("add", "change", "delete"):
+            with self.subTest(action=action):
+                permission = Permission.objects.get(
+                    content_type__app_label=self.model._meta.app_label,
+                    codename=get_permission_codename(action, self.model._meta),
+                )
+                self.user.user_permissions.add(permission)
+
+                menu_items = settings_menu.render_component(self.request)
+                item = menu_items[0]
+                self.assertEqual(item.name, "publishables")
+                self.assertEqual(item.label, "Publishables")
+                self.assertEqual(item.icon_name, "snippet")
+                self.assertEqual(item.url, self.get_url("list"))
+
+                self.user.user_permissions.remove(permission)
+
+    def test_snippets_menu_item_hidden_when_all_snippets_have_menu_item(self):
+        menu_items = admin_menu.menu_items_for_request(self.request)
+        snippets = [item for item in menu_items if item.name == "snippets"]
+        self.assertEqual(len(snippets), 1)
+        item = snippets[0]
+        self.assertEqual(item.name, "snippets")
+        self.assertEqual(item.label, "Snippets")
+        self.assertEqual(item.icon_name, "snippet")
+        self.assertEqual(item.url, reverse("wagtailsnippets:index"))
+
+        # Clear cached property
+        del item._all_have_menu_items
+
+        with mock.patch(
+            "wagtail.snippets.views.snippets.SnippetViewSet.get_menu_item_is_registered"
+        ) as mock_registered:
+            mock_registered.return_value = True
+            menu_items = admin_menu.render_component(self.request)
+            snippets = [item for item in menu_items if item.name == "snippets"]
+            self.assertEqual(len(snippets), 0)
